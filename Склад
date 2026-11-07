@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Склад «Зеленоград» — v4.0</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --text:#e2e8f0;
+    --muted:#94a3b8; --accent:#38bdf8; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;
+       background:var(--bg);color:var(--text);padding:16px;max-width:1300px;margin:auto}
+  h1{font-size:1.4rem;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:.85rem;margin-bottom:14px}
+  .topbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;
+          background:var(--panel);padding:12px 16px;border-radius:12px}
+  .topbar label{font-size:.8rem;color:var(--muted)}
+  .topbar select,.topbar input{padding:8px 10px;border-radius:8px;border:1px solid var(--panel2);
+       background:var(--bg);color:var(--text);font-size:.85rem;font-family:inherit}
+  .user-chip{margin-left:auto;font-size:.85rem;display:flex;gap:8px;align-items:center}
+  .user-chip b{color:var(--accent)}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+  .stat{background:var(--panel);border-radius:12px;padding:14px 16px;
+        border-left:4px solid var(--accent);cursor:pointer;transition:.15s;position:relative}
+  .stat:hover{transform:translateY(-2px);background:var(--panel2)}
+  .stat.active{outline:2px solid var(--accent);outline-offset:2px}
+  .stat .num{font-size:1.6rem;font-weight:700;line-height:1.1}
+  .stat .lbl{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+  .stat .hint{color:var(--muted);font-size:.7rem;margin-top:5px;line-height:1.3}
+  .stat .arrow{position:absolute;top:8px;right:10px;font-size:.85rem;opacity:.6}
+  .stat.warn{border-color:var(--warn)} .stat.bad{border-color:var(--bad)} .stat.ok{border-color:var(--ok)}
+
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center}
+  input[type=search]{flex:1;min-width:200px;padding:10px 14px;border-radius:10px;
+       border:1px solid var(--panel2);background:var(--panel);color:var(--text);font-size:.9rem}
+  input[type=search]:focus{outline:2px solid var(--accent)}
+  button{padding:9px 13px;border-radius:10px;border:1px solid var(--panel2);
+         background:var(--panel);color:var(--text);cursor:pointer;font-size:.82rem;
+         transition:.15s;font-family:inherit}
+  button:hover{background:var(--panel2)}
+  .primary{background:var(--accent);color:#0b1220;font-weight:600;border:none}
+  .primary:hover{filter:brightness(1.1);background:var(--accent)}
+  .success{background:var(--ok);color:#06210f;font-weight:600;border:none}
+  .danger{background:var(--bad);color:#fff;font-weight:600;border:none}
+  .warnbtn{background:var(--warn);color:#1a1200;font-weight:600;border:none}
+
+  .banner{display:none;align-items:center;justify-content:space-between;
+    background:var(--panel2);border-left:4px solid var(--accent);
+    padding:10px 14px;border-radius:10px;margin-bottom:12px;gap:10px;flex-wrap:wrap;font-size:.88rem}
+  .banner.show{display:flex}
+  .banner b{color:var(--accent)}
+
+  .anchors{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .anchors button{font-size:.78rem;padding:6px 11px;border-radius:20px;background:var(--panel2)}
+  .anchors button.active{background:var(--accent);color:#0b1220;font-weight:600}
+
+  .group{margin-bottom:20px;scroll-margin-top:12px}
+  .group h2{font-size:.95rem;color:var(--accent);margin:0 0 6px;padding-bottom:5px;
+            border-bottom:1px solid var(--panel2);display:flex;justify-content:space-between}
+  .group h2 span{color:var(--muted);font-weight:400;font-size:.78rem}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:12px;overflow:hidden}
+  th{background:var(--panel2);text-align:left;padding:9px 10px;font-size:.72rem;
+     text-transform:uppercase;letter-spacing:.4px;color:var(--muted);cursor:pointer;user-select:none}
+  th:hover{color:var(--accent)}
+  th.no-sort{cursor:default}
+  td{padding:8px 10px;border-top:1px solid #2e3d55;font-size:.85rem;vertical-align:middle}
+  tr:hover td{background:#243149}
+  .num-cell{color:var(--muted);width:36px;font-size:.75rem}
+  .qty{white-space:nowrap;font-weight:700;text-align:right;width:110px}
+  .art{color:var(--muted);font-size:.78rem;white-space:nowrap}
+  .low .qty{color:var(--warn)} .crit .qty{color:var(--bad)}
+  .expired td{opacity:.6}
+  .expired .qty{color:var(--bad);text-decoration:line-through}
+  .row-actions{white-space:nowrap;width:170px;text-align:right}
+  .row-actions button{padding:4px 7px;font-size:.78rem;border-radius:7px;margin-left:3px}
+  .thumb{width:32px;height:32px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:6px}
+  .empty{padding:30px;text-align:center;color:var(--muted);background:var(--panel);border-radius:12px}
+  .stock-tag{display:inline-block;font-size:.65rem;padding:1px 6px;border-radius:5px;margin-left:5px}
+  .stock-tag.ok{background:#14532d;color:#86efac}
+  .stock-tag.low{background:#4a2e00;color:#fcd34d}
+  .stock-tag.crit{background:#4a1010;color:#fca5a5}
+  @media(max-width:700px){.art,.thumb{display:none}.row-actions{width:auto}}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);
+    display:none;align-items:center;justify-content:center;z-index:100;padding:16px;overflow-y:auto}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--panel);border-radius:16px;padding:22px;width:100%;
+         max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,.6);max-height:92vh;overflow-y:auto}
+  .modal.wide{max-width:900px}
+  .modal h3{margin:0 0 14px;font-size:1.05rem}
+  .modal label{display:block;font-size:.78rem;color:var(--muted);margin:10px 0 4px}
+  .modal input,.modal select,.modal textarea{width:100%;padding:9px 11px;border-radius:9px;
+    border:1px solid var(--panel2);background:var(--bg);color:var(--text);font-size:.9rem;font-family:inherit}
+  .modal input:focus,.modal select:focus,.modal textarea:focus{outline:2px solid var(--accent)}
+  .modal .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .modal-actions{display:flex;gap:10px;margin-top:18px;justify-content:flex-end;flex-wrap:wrap}
+  .hist-item{padding:8px 0;border-bottom:1px solid var(--panel2);font-size:.82rem;display:flex;gap:10px}
+  .hist-item .t{color:var(--muted);white-space:nowrap;font-size:.75rem}
+  .hist-item .a{flex:1}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--ok);color:#06210f;padding:11px 20px;border-radius:10px;
+    font-weight:600;font-size:.88rem;opacity:0;transition:.3s;pointer-events:none;z-index:300}
+  .toast.show{opacity:1;bottom:30px}
+  .toast.err{background:var(--bad);color:#fff}
+
+  /* Печать */
+  @media print{
+    body{background:#fff;color:#000;padding:0}
+    .topbar,.controls,.anchors,.stats,.row-actions,button,.banner{display:none!important}
+    .group h2{color:#000;border-color:#000}
+    table{background:#fff}
+    th{background:#eee;color:#000}
+    td{border-color:#ccc}
+    .no-print{display:none!important}
+  }
+  .print-area{display:none}
+  .print-area.show{display:block;background:#fff;color:#000;padding:20px}
+  .print-area h2{color:#000}
+  .print-area table{background:#fff}
+  .print-area th{background:#eee;color:#000}
+  .print-area td{border:1px solid #ccc;color:#000}
+  .print-area .blank{display:inline-block;width:60px;border-bottom:1px solid #000}
+
+  /* Отчёты */
+  .report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:16px}
+  .report-card{background:var(--panel2);padding:14px;border-radius:10px}
+  .report-card h4{margin:0 0 8px;font-size:.85rem;color:var(--accent)}
+  .bar{height:8px;background:#334155;border-radius:4px;overflow:hidden;margin-top:4px}
+  .bar>div{height:100%;background:var(--accent)}
+  .report-row{display:flex;justify-content:space-between;font-size:.8rem;padding:3px 0}
+
+  /* QR */
+  .qr-box{text-align:center;padding:10px}
+  .qr-box img{width:200px;height:200px;background:#fff;padding:10px;border-radius:10px}
+  .qr-box p{font-size:.85rem;margin:8px 0 0}
+
+  /* Печать этикеток */
+  .labels{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+  .label-card{border:1px solid #334155;border-radius:8px;padding:10px;background:var(--panel2);text-align:center;font-size:.75rem}
+  .label-card img{width:100px;height:100px;background:#fff;padding:4px;border-radius:6px}
+  .label-card b{display:block;margin-top:4px;font-size:.78rem;line-height:1.2}
+  .label-card small{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<h1>📦 Склад «Зеленоград» <small style="font-size:.7rem;color:var(--muted)">v4.0</small></h1>
+<div class="sub">Нажмите на плитку статистики — откроется отфильтрованный список. Все данные сохраняются в браузере.</div>
+
+<!-- Верхняя панель: склад + пользователь -->
+<div class="topbar">
+  <label>Склад:</label>
+  <select id="warehouseSel" onchange="switchWarehouse(this.value)"></select>
+  <div class="user-chip" id="userChip"></div>
+</div>
+
+<!-- Статистика -->
+<div class="stats" id="stats"></div>
+
+<!-- Баннер фильтра -->
+<div class="banner" id="banner">
+  <div id="bannerText"></div>
+  <button onclick="clearFilter()">✖ Сбросить фильтр</button>
+</div>
+
+<!-- Управление -->
+<div class="controls">
+  <input type="search" id="search" placeholder="🔍 Поиск по названию или артикулу...">
+  <button class="primary" onclick="openAdd()">➕ Добавить</button>
+  <button class="warnbtn" onclick="openReorderList()">🔔 Пора заказать</button>
+  <button class="success" onclick="printPurchaseList()">🖨️ На закупку</button>
+  <button onclick="printLabels()">🏷️ Этикетки</button>
+  <button onclick="openReports()">📈 Отчёты</button>
+  <button onclick="openHistory()">📜 История</button>
+  <button class="success" onclick="exportCSV()">📥 CSV</button>
+  <button onclick="exportJSON()">💾 Копия</button>
+  <button onclick="document.getElementById('importFile').click()">📂 Загрузить</button>
+  <button class="danger" onclick="resetData()">♻️ Сброс</button>
+  <input type="file" id="importFile" accept=".json,.csv,.txt" style="display:none" onchange="importFile(event)">
+</div>
+
+<!-- Якоря категорий -->
+<div class="anchors" id="anchors"></div>
+
+<!-- Таблица -->
+<div id="tableWrap"></div>
+
+<!-- ПЕЧАТЬ: область -->
+<div class="print-area" id="printArea"></div>
+
+<!-- ===== МОДАЛЬНЫЕ ОКНА ===== -->
+
+<!-- Добавить/редактировать -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle">Добавить позицию</h3>
+    <label>Наименование *</label>
+    <input type="text" id="f-name" placeholder="Например: Шлифовальные круги 125мм">
+    <div class="row2">
+      <div><label>Артикул / марка</label><input type="text" id="f-art" placeholder="P1000"></div>
+      <div><label>Единица</label>
+        <select id="f-unit">
+          <option>шт.</option><option>кг.</option><option>гр.</option><option>л.</option>
+          <option>м.</option><option>упак.</option><option>коробок</option>
+          <option>кругов</option><option>рулон</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div><label>Количество *</label><input type="number" id="f-qty" min="0" step="1" value="0"></div>
+      <div><label>Мин. запас (порог «мало»)</label><input type="number" id="f-min" min="0" step="1" value="3"></div>
+    </div>
+    <label>Срок годности (если есть)</label>
+    <input type="date" id="f-exp">
+    <label>Фото (необязательно)</label>
+    <input type="file" id="f-photo" accept="image/*" onchange="handlePhoto(event)">
+    <div id="photoPreview"></div>
+    <div class="modal-actions">
+      <button onclick="closeModal('modal')">Отмена</button>
+      <button class="primary" onclick="saveItem()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Приход/расход -->
+<div class="modal-overlay" id="moveModal">
+  <div class="modal">
+    <h3 id="moveTitle">Движение товара</h3>
+    <p style="font-size:.85rem;color:var(--muted)" id="moveItemName"></p>
+    <div class="row2">
+      <div><label>Тип</label>
+        <select id="moveType"><option value="in">➕ Приход</option><option value="out">➖ Расход</option></select>
+      </div>
+      <div><label>Количество *</label><input type="number" id="moveQty" min="1" step="1" value="1"></div>
+    </div>
+    <label>Кому / откуда / примечание</label>
+    <input type="text" id="moveNote" placeholder="Например: Иванов, объект №2">
+    <div class="modal-actions">
+      <button onclick="closeModal('moveModal')">Отмена</button>
+      <button class="primary" onclick="applyMove()">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- История -->
+<div class="modal-overlay" id="histModal">
+  <div class="modal wide">
+    <h3>📜 История операций</h3>
+    <div id="histList" style="max-height:60vh;overflow-y:auto"></div>
+    <div class="modal-actions">
+      <button onclick="clearHistory()">Очистить историю</button>
+      <button class="primary" onclick="closeModal('histModal')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Отчёты -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal wide">
+    <h3>📈 Отчёты и аналитика</h3>
+    <div id="reportBody"></div>
+    <div class="modal-actions">
+      <button class="primary" onclick="closeModal('reportModal')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Пора заказать -->
+<div class="modal-overlay" id="reorderModal">
+  <div class="modal wide">
+    <h3>🔔 Пора заказать (остаток ниже мин. запаса)</h3>
+    <div id="reorderBody"></div>
+    <div class="modal-actions">
+      <button class="success" onclick="printReorderList()">🖨️ Печать</button>
+      <button class="primary" onclick="closeModal('reorderModal')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Вход -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal">
+    <h3>👤 Вход</h3>
+    <label>Ваше имя</label>
+    <input type="text" id="loginName" placeholder="Например: Иванов И.И.">
+    <label>Роль</label>
+    <select id="loginRole">
+      <option value="admin">Администратор (полный доступ)</option>
+      <option value="storekeeper">Кладовщик (может менять)</option>
+      <option value="viewer">Снабженец (только смотреть)</option>
+    </select>
+    <div class="modal-actions">
+      <button onclick="closeModal('loginModal')">Отмена</button>
+      <button class="primary" onclick="doLogin()">Войти</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal" style="max-width:340px">
+    <h3>🏷️ QR-код позиции</h3>
+    <div class="qr-box" id="qrBox"></div>
+    <div class="modal-actions">
+      <button onclick="closeModal('qrModal')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   ИСХОДНЫЕ ДАННЫЕ
+   ============================================================ */
+const DEFAULT_DATA = [
+  {n:"Шлифовальные круги 8 отв. 125мм", a:"P1000", q:11, u:"шт.", min:3},
+  {n:"Шлифовальные круги 8 отв. 125мм", a:"Р400", q:11, u:"шт.", min:3},
+  {n:"Шлифовальные круги 8 отв. 125мм", a:"Р240", q:11, u:"шт.", min:3},
+  {n:"Шлифовальные круги 8 отв. 125мм", a:"Р150", q:5, u:"шт.", min:3},
+  {n:"Шлифовальные круги 8 отв. 125мм", a:"Р120", q:11, u:"шт.", min:3},
+  {n:"Шлифовальные круги 8 отв. 125мм", a:"Р80", q:3, u:"шт.", min:3},
+  {n:"Шлифовальные круги 8 отв. 125мм", a:"Р60", q:11, u:"шт.", min:3},
+  {n:"Шлифовальные круги 8 отв. 125мм", a:"Р40", q:10, u:"шт.", min:3},
+  {n:"Липкие салфетки", a:"", q:4, u:"шт.", min:2},
+  {n:"Масло для компрессоров", a:"", q:1, u:"л.", min:1},
+  {n:"Подошва на шлифовальную машинку 8 отв. 125мм", a:"", q:1, u:"шт.", min:1},
+  {n:"Файны", a:"Р100", q:250, u:"шт.", min:50},
+  {n:"Укр. Пленка полиэтиленовая", a:"", q:1, u:"шт.", min:1},
+  {n:"Плёночная дверь на молнии", a:"", q:1, u:"шт.", min:1},
+  {n:"Кисть малярная 100 мм", a:"", q:1, u:"шт.", min:2},
+  {n:"Моб губчатый", a:"", q:1, u:"шт.", min:1},
+  {n:"Валик 10 мм", a:"", q:1, u:"шт.", min:2},
+  {n:"Вафельное полотно 10м", a:"", q:1, u:"шт.", min:1},
+  {n:"Предфильтры для респираторов", a:"", q:20, u:"упак.", min:10},
+  {n:"Фильтры для респиратора", a:"", q:3, u:"упак.", min:5},
+  {n:"Респиратор Юлия", a:"", q:1, u:"шт.", min:2},
+  {n:"Dolphin оранж. Скотч", a:"", q:3, u:"шт.", min:2},
+  {n:"Малярная лента", a:"", q:1, u:"шт.", min:3},
+  {n:"Kraft серый скотч", a:"", q:6, u:"шт.", min:3},
+  {n:"Шпакля отделочная 250 грамм", a:"", q:1, u:"шт.", min:2},
+  {n:"Шлифовальная машинка Deko", a:"", q:1, u:"шт.", min:1},
+  {n:"Баллончики", a:"Ral 7039", q:34, u:"шт.", min:10},
+  {n:"Баллончики", a:"Ral 7016", q:1, u:"шт.", min:5},
+  {n:"Баллончики", a:"Грунт НЦ", q:2, u:"шт.", min:5},
+  {n:"Баллончики", a:"7021", q:3, u:"шт.", min:5},
+  {n:"Баллончики", a:"9005", q:2, u:"шт.", min:5},
+  {n:"Грунт 15 выравнивающий черный", a:"", q:2, u:"шт.", min:3},
+  {n:"Баллончики", a:"Ral 9003", q:1, u:"шт.", min:5},
+  {n:"Эмаль для пластика", a:"", q:1, u:"шт.", min:1},
+  {n:"Эмаль универсальная", a:"", q:1, u:"шт.", min:1},
+  {n:"Стремянка 3 ступени", a:"", q:2, u:"шт.", min:1},
+  {n:"Тележка для ящиков", a:"", q:1, u:"шт.", min:1},
+  {n:"Краска Золотой Муар", a:"JO 20 PL77", q:7, u:"кг.", min:5},
+  {n:"Глянцевая эмаль алюминиевый короб", a:"FB M066", q:1, u:"кг.", min:2},
+  {n:"Матовая эмаль ПУ РОММЕЛЬ", a:"FO 25M060", q:1, u:"кг.", min:2},
+  {n:"Матовая эмаль 7042", a:"FO 10M060", q:10, u:"кг.", min:5},
+  {n:"Лак акриловый", a:"JB PL72", q:500, u:"гр.", min:200},
+  {n:"Эмаль акриловая 7024", a:"JO 03 PL77", q:5, u:"кг.", min:3},
+  {n:"Спец эффект акриловый", a:"", q:10, u:"кг.", min:3},
+  {n:"Матовая эмаль двери", a:"", q:5, u:"кг.", min:3},
+  {n:"Разбавитель", a:"DF M003", q:1, u:"кг.", min:2},
+  {n:"Отвердитель", a:"FC 815", q:2, u:"шт.", min:2},
+  {n:"Отвердитель", a:"M070", q:1, u:"шт.", min:2},
+  {n:"Прожектора", a:"", q:3, u:"шт.", min:2},
+  {n:"Триноги для прожекторов", a:"", q:3, u:"шт.", min:2},
+  {n:"Шлинг для компрессоров", a:"", q:8, u:"шт.", min:4},
+  {n:"Компрессор 50 л.", a:"", q:4, u:"шт.", min:2},
+  {n:"Компрессор 100 л.", a:"", q:3, u:"шт.", min:2},
+  {n:"Шлифовальная машинка Интерскол", a:"", q:3, u:"шт.", min:2},
+  {n:"Датчик ОДА НПО ДИОД", a:"", q:3, u:"шт.", min:2},
+  {n:"Абранет", a:"Р80", q:6, u:"коробок", min:5},
+  {n:"Абранет", a:"Р180", q:5, u:"коробок", min:5},
+  {n:"Абранет", a:"Р120", q:16, u:"кругов", min:5},
+  {n:"Абралон", a:"Р500", q:13, u:"коробок", min:5},
+  {n:"Оксид церия 500 гр.", a:"", q:3, u:"шт.", min:2},
+  {n:"Подложка", a:"", q:5, u:"шт.", min:3},
+  {n:"Тарелка", a:"", q:5, u:"шт.", min:3},
+  {n:"Фетры", a:"", q:62, u:"шт.", min:20},
+  {n:"Тсунами круги шлифовальные", a:"P180", q:100, u:"шт.", min:20},
+  {n:"Тсунами круги шлифовальные", a:"Р80", q:20, u:"шт.", min:20},
+  {n:"Тсунами круги шлифовальные", a:"Р240", q:99, u:"шт.", min:20},
+  {n:"Смирдекс круги шлифовальные", a:"Р180", q:6, u:"шт.", min:10},
+  {n:"Смирдекс круги шлифовальные", a:"Р150", q:4, u:"шт.", min:10},
+  {n:"Смирдекс круги шлифовальные", a:"Р240", q:8, u:"шт.", min:10},
+  {n:"Ballu теппловинтилятор", a:"", q:8, u:"шт.", min:2},
+  {n:"Пылесос строительный", a:"", q:2, u:"шт.", min:1},
+  {n:"Дверные ручки Armadillo", a:"", q:100, u:"шт.", min:20},
+  {n:"Фальтры для пылесоса K`Archer", a:"", q:10, u:"шт.", min:5},
+  {n:"Дюбеля для теплоизоляции", a:"", q:300, u:"шт.", min:100},
+  {n:"Рации", a:"", q:7, u:"шт.", min:3},
+  {n:"Генератор бензиновый", a:"", q:1, u:"шт.", min:1},
+  {n:"Пила ручная по дереву", a:"", q:9, u:"шт.", min:3},
+  {n:"Стремянка двусторонняя 2.7 м", a:"", q:1, u:"шт.", min:1},
+  {n:"Строп из полиэфирного каната", a:"", q:1, u:"шт.", min:1},
+  {n:"Каски оранж.", a:"", q:10, u:"шт.", min:5},
+  {n:"Подошва для УШМ", a:"", q:2, u:"шт.", min:1},
+  {n:"Привязь страховочная", a:"", q:6, u:"шт.", min:3},
+  {n:"Затирка церезит графит", a:"", q:2, u:"кг.", min:2},
+  {n:"Бензиновый мотобур", a:"", q:1, u:"шт.", min:1},
+  {n:"Пистолет для герметика (Скелетный)", a:"", q:3, u:"шт.", min:2},
+  {n:"Киянка", a:"", q:7, u:"шт.", min:3},
+  {n:"Гвоздодёр", a:"", q:1, u:"шт.", min:1},
+  {n:"Разводной ключ", a:"", q:2, u:"шт.", min:1},
+  {n:"Отвертка крестовая", a:"", q:2, u:"шт.", min:2},
+  {n:"Паяльник", a:"", q:1, u:"шт.", min:1},
+  {n:"Замок Гардиан (32.11)", a:"", q:4, u:"шт.", min:2},
+  {n:"Короб распределительный", a:"", q:7, u:"шт.", min:3},
+  {n:"Геосетка кладочная базальтовая", a:"", q:5, u:"шт.", min:3},
+  {n:"Пила торцовочная", a:"Elitech", q:1, u:"шт.", min:1},
+  {n:"Пила торцовочная", a:"Metabo", q:1, u:"шт.", min:1},
+  {n:"Шуруповерт", a:"", q:1, u:"шт.", min:1},
+  {n:"Дверной доводчик", a:"Notedo", q:4, u:"шт.", min:2},
+  {n:"Электрошкаф с автоматами", a:"", q:1, u:"шт.", min:1},
+  {n:"Гайковёрт", a:"", q:1, u:"шт.", min:1},
+  {n:"Фен технический сетевой", a:"Спец", q:2, u:"шт.", min:1}
+];
+
+/* ============================================================
+   КАТЕГОРИИ
+   ============================================================ */
+const CATEGORIES = [
+  {id:"abrasive", name:"🧰 Абразивы и шлифовка", test:n=>/шлиф|абранет|абралон|файн|фетр|подложк|тарелк|оксид церия|тсунами|смирдекс|круг/i.test(n)},
+  {id:"paint",    name:"🎨 ЛКМ и баллончики", test:n=>/баллон|эмаль|краск|лак|грунт|разбавит|отвердит|шпакл|затирк|спец эффект|матовая|золотой муар|глянцев/i.test(n)},
+  {id:"tools",    name:"🔧 Инструмент и оборудование", test:n=>/машинк|компрессор|пылесос|прожектор|триног|стремянк|тележк|генератор|пила|шуруповерт|гайков|фен|паяльник|ключ|отвертк|киянк|гвоздод|пистолет|датчик|раци|мотобур|шкаф|доводчик|тепплов|ballu|шлинг/i.test(n)},
+  {id:"safety",   name:"🦺 СИЗ и безопасность", test:n=>/респиратор|фильтр|каск|привязь|стоп|страхов/i.test(n)},
+  {id:"consum",   name:"🧴 Расходники и прочее", test:n=>/салфет|масло|подошв|пленк|плёнк|кисть|валик|полотн|скотч|лент|моб|дверь|дюбел|геосетк|замок|короб|ручк|фальтр|шпакл/i.test(n)}
+];
+
+function getCat(name){
+  for(const c of CATEGORIES) if(c.test(name)) return c;
+  return {id:"other", name:"📦 Прочее"};
+}
+
+/* ============================================================
+   ХРАНЕНИЕ
+   ============================================================ */
+const STORAGE = {
+  warehouses: "sklad_v4_warehouses",
+  current:    "sklad_v4_current",
+  user:       "sklad_v4_user"
+};
+
+function loadWarehouses(){
+  try{
+    const s = localStorage.getItem(STORAGE.warehouses);
+    if(s) return JSON.parse(s);
+  }catch(e){}
+  return { "Зеленоград": JSON.parse(JSON.stringify(DEFAULT_DATA)) };
+}
+function saveWarehouses(){
+  try{ localStorage.setItem(STORAGE.warehouses, JSON.stringify(WAREHOUSES)); }
+  catch(e){ showToast("⚠️ Ошибка сохранения: " + e.message, true); }
+}
+function getCurrentWarehouseName(){
+  return localStorage.getItem(STORAGE.current) || "Зеленоград";
+}
+function setCurrentWarehouseName(n){
+  localStorage.setItem(STORAGE.current, n);
+}
+function getHistory(){
+  try{ return JSON.parse(localStorage.getItem("sklad_v4_history")||"[]"); }
+  catch(e){ return []; }
+}
+function saveHistory(h){
+  try{ localStorage.setItem("sklad_v4_history", JSON.stringify(h.slice(0,500))); }catch(e){}
+}
+function logAction(text){
+  const h = getHistory();
+  h.unshift({
+    t: new Date().toISOString(),
+    a: text,
+    u: USER ? USER.name : "—"
+  });
+  saveHistory(h);
+}
+
+/* ============================================================
+   СОСТОЯНИЕ
+   ============================================================ */
+let WAREHOUSES = loadWarehouses();
+let CURRENT = getCurrentWarehouseName();
+if(!WAREHOUSES[CURRENT]){ CURRENT = Object.keys(WAREHOUSES)[0]; setCurrentWarehouseName(CURRENT); }
+let DATA = WAREHOUSES[CURRENT];
+let USER = (()=>{ try{ return JSON.parse(localStorage.getItem(STORAGE.user)||"null"); }catch(e){ return null; } })();
+let state = {query:"", cat:"all", stockFilter:"all", sortKey:"", sortDir:1};
+let editingIndex = -1;
+let moveIndex = -1;
+let tempPhoto = null;
+
+/* ============================================================
+   УТИЛИТЫ
+   ============================================================ */
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function showToast(msg, isErr){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.toggle("err", !!isErr);
+  t.classList.add("show");
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove("show"), 2000);
+}
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString("ru")+" "+d.toLocaleTimeString("ru",{hour:"2-digit",minute:"2-digit"});
+}
+function downloadFile(content, name, type){
+  const blob = new Blob([content], {type});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+function canEdit(){
+  return !USER || USER.role === "admin" || USER.role === "storekeeper";
+}
+
+/* ============================================================
+   ПОЛЬЗОВАТЕЛЬ
+   ============================================================ */
+function renderUserChip(){
+  const el = document.getElementById("userChip");
+  if(USER){
+    const roleNames = {admin:"Админ", storekeeper:"Кладовщик", viewer:"Снабженец"};
+    el.innerHTML = `👤 <b>${esc(USER.name)}</b> (${roleNames[USER.role]||USER.role}) <button onclick="logout()">Выйти</button>`;
+  }else{
+    el.innerHTML = `<button onclick="openLogin()">👤 Войти</button>`;
+  }
+}
+function openLogin(){
+  document.getElementById("loginName").value = USER ? USER.name : "";
+  document.getElementById("loginRole").value = USER ? USER.role : "admin";
+  document.getElementById("loginModal").classList.add("show");
+}
+function doLogin(){
+  const name = document.getElementById("loginName").value.trim();
+  const role = document.getElementById("loginRole").value;
+  if(!name){ showToast("Введите имя", true); return; }
+  USER = {name, role};
+  localStorage.setItem(STORAGE.user, JSON.stringify(USER));
+  renderUserChip();
+  closeModal("loginModal");
+  renderAll();
+  showToast("✅ Вход выполнен: " + name);
+}
+function logout(){
+  USER = null;
+  localStorage.removeItem(STORAGE.user);
+  renderUserChip();
+  renderAll();
+  showToast("Вы вышли");
+}
+
+/* ============================================================
+   СКЛАДЫ
+   ============================================================ */
+function renderWarehouseSelect(){
+  const sel = document.getElementById("warehouseSel");
+  sel.innerHTML = Object.keys(WAREHOUSES).map(n=>
+    `<option value="${esc(n)}" ${n===CURRENT?'selected':''}>${esc(n)}</option>`
+  ).join("") + `<option value="__add__">➕ Добавить склад...</option>`;
+}
+function switchWarehouse(name){
+  if(name === "__add__"){
+    const n = prompt("Название нового склада:");
+    if(!n || !n.trim()){ renderWarehouseSelect(); return; }
+    if(WAREHOUSES[n]){
+      alert("Склад с таким названием уже есть");
+      renderWarehouseSelect(); return;
+    }
+    WAREHOUSES[n] = [];
+    saveWarehouses();
+    CURRENT = n;
+  }else{
+    CURRENT = name;
+  }
+  setCurrentWarehouseName(CURRENT);
+  DATA = WAREHOUSES[CURRENT];
+  renderWarehouseSelect();
+  renderAll();
+  showToast("📦 Склад: " + CURRENT);
+}
+
+/* ============================================================
+   СТАТИСТИКА
+   ============================================================ */
+function renderStats(){
+  const totalPos = DATA.length;
+  const totalUnits = DATA.reduce((s,x)=>s+(+x.q||0),0);
+  const catCount = new Set(DATA.map(x=>getCat(x.n).id)).size;
+  const crit = DATA.filter(x=>x.q===0).length;
+  const low = DATA.filter(x=>x.q>0 && x.q<=(x.min||3)).length;
+  const okCount = DATA.filter(x=>x.q>(x.min||3)).length;
+  const reorder = DATA.filter(x=>x.q < (x.min||3)).length;
+
+  const tiles = [
+    {key:"all",  cls:"",    num:totalPos, lbl:"Всего позиций", hint:"Показать всё", arrow:"→"},
+    {key:"units",cls:"",    num:totalUnits.toLocaleString('ru'), lbl:"Единиц товара", hint:"Сумма количеств"},
+    {key:"cats", cls:"",    num:catCount, lbl:"Категорий", hint:"Групп материалов"},
+    {key:"ok",   cls:"ok",  num:okCount, lbl:"Достаточно", hint:"Выше мин. запаса", arrow:"→"},
+    {key:"low",  cls:"warn",num:low, lbl:"Мало", hint:"На границе порога", arrow:"→"},
+    {key:"crit", cls:"bad", num:crit, lbl:"Нет в наличии", hint:"Остаток 0", arrow:"→"},
+    {key:"reorder", cls:"bad", num:reorder, lbl:"Пора заказать", hint:"Ниже мин. запаса", arrow:"→"}
+  ];
+
+  document.getElementById("stats").innerHTML = tiles.map(t=>`
+    <div class="stat ${t.cls} ${state.stockFilter===t.key?'active':''}"
+         ${["all","ok","low","crit","reorder"].includes(t.key) ? `onclick="setStockFilter('${t.key}')"` : ''}>
+      <div class="arrow">${t.arrow||""}</div>
+      <div class="num">${t.num}</div>
+      <div class="lbl">${t.lbl}</div>
+      <div class="hint">${t.hint}</div>
+    </div>
+  `).join("");
+}
+function setStockFilter(key){
+  state.stockFilter = state.stockFilter === key ? "all" : key;
+  if(state.stockFilter !== "all") state.cat = "all";
+  if(state.stockFilter === "reorder"){ openReorderList(); state.stockFilter="all"; renderStats(); return; }
+  renderStats(); renderBanner(); renderAnchors(); renderTable();
+  if(state.stockFilter !== "all") window.scrollTo({top:0, behavior:"smooth"});
+}
+function clearFilter(){
+  state.stockFilter = "all"; state.cat = "all"; state.query = "";
+  document.getElementById("search").value = "";
+  renderStats(); renderBanner(); renderAnchors(); renderTable();
+}
+function renderBanner(){
+  const b = document.getElementById("banner");
+  const txt = document.getElementById("bannerText");
+  if(state.stockFilter === "all"){ b.classList.remove("show"); return; }
+  const map = {
+    ok:   "Показаны позиции с запасом выше мин.",
+    low:  "⚠️ Позиции на границе порога",
+    crit: "🔴 Позиции с нулевым остатком"
+  };
+  txt.innerHTML = map[state.stockFilter] || "";
+  b.classList.add("show");
+}
+function matchesStockFilter(it){
+  if(state.stockFilter === "all") return true;
+  const min = it.min||3;
+  if(state.stockFilter === "ok")   return it.q > min;
+  if(state.stockFilter === "low")  return it.q > 0 && it.q <= min;
+  if(state.stockFilter === "crit") return it.q === 0;
+  return true;
+}
+
+/* ============================================================
+   ЯКОРЯ КАТЕГОРИЙ
+   ============================================================ */
+function renderAnchors(){
+  const groups = {};
+  DATA.forEach(it=>{
+    if(!matchesStockFilter(it)) return;
+    const c = getCat(it.n); (groups[c.id] ||= {name:c.name, count:0}).count++;
+  });
+  const order = CATEGORIES.map(c=>c.id).concat("other");
+  let html = `<button class="${state.cat==='all'?'active':''}" data-cat="all">Все (${Object.values(groups).reduce((s,g)=>s+g.count,0)})</button>`;
+  order.forEach(id=>{
+    if(!groups[id]) return;
+    html += `<button class="${state.cat===id?'active':''}" data-cat="${id}">${groups[id].name} <b>${groups[id].count}</b></button>`;
+  });
+  document.getElementById("anchors").innerHTML = html;
+  document.querySelectorAll("#anchors button").forEach(b=>{
+    b.onclick = ()=>{
+      state.cat = b.dataset.cat;
+      renderAnchors(); renderTable();
+      if(state.cat!=="all"){
+        const el = document.getElementById("g-"+state.cat);
+        if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
+      }
+    };
+  });
+}
+
+/* ============================================================
+   ТАБЛИЦА
+   ============================================================ */
+function renderTable(){
+  const q = state.query.toLowerCase().trim();
+  const order = CATEGORIES.map(c=>c.id).concat("other");
+  let html = ""; let shown = 0;
+
+  order.forEach(id=>{
+    if(state.cat!=="all" && state.cat!==id) return;
+    let items = DATA.map((it,i)=>({...it, idx:i}))
+      .filter(it=>{
+        if(getCat(it.n).id !== id) return false;
+        if(!matchesStockFilter(it)) return false;
+        if(!q) return true;
+        return (it.n+" "+(it.a||"")).toLowerCase().includes(q);
+      });
+    if(state.sortKey){
+      items.sort((a,b)=>{
+        const va = a[state.sortKey] ?? "", vb = b[state.sortKey] ?? "";
+        if(typeof va === "number" && typeof vb === "number") return (va-vb)*state.sortDir;
+        return String(va).localeCompare(String(vb))*state.sortDir;
+      });
+    }
+    if(!items.length) return;
+    shown += items.length;
+    const catName = getCat(items[0].n).name;
+    html += `<div class="group" id="g-${id}">
+      <h2>${catName} <span>${items.length} поз.</span></h2>
+      <table><thead><tr>
+        <th class="no-sort">№</th>
+        <th onclick="sortBy('n')">Наименование ${sortIcon('n')}</th>
+        <th onclick="sortBy('a')">Артикул ${sortIcon('a')}</th>
+        <th style="text-align:right" onclick="sortBy('q')">Кол-во ${sortIcon('q')}</th>
+        <th class="no-sort"></th>
+      </tr></thead><tbody>`;
+    items.forEach(it=>{
+      const min = it.min||3;
+      const isCrit = it.q === 0;
+      const isLow = it.q > 0 && it.q <= min;
+      const cls = isCrit ? "crit" : isLow ? "low" : "";
+      const expired = it.exp && new Date(it.exp) < new Date();
+      let tag = "";
+      if(isCrit) tag = `<span class="stock-tag crit">нет</span>`;
+      else if(isLow) tag = `<span class="stock-tag low">мало</span>`;
+      const thumb = it.photo ? `<img class="thumb" src="${it.photo}">` : "";
+      const expStr = it.exp ? `<div style="font-size:.7rem;color:${expired?'var(--bad)':'var(--muted)'}">до ${it.exp}</div>` : "";
+      const editBtn = canEdit() ? `
+        <button class="success" onclick="openMove(${it.idx})" title="Приход/расход">＋−</button>
+        <button onclick="openQR(${it.idx})" title="QR-код">🏷️</button>
+        <button onclick="openEdit(${it.idx})" title="Редактировать">✏️</button>
+        <button onclick="deleteItem(${it.idx})" title="Удалить">🗑️</button>` : "";
+      html += `<tr class="${cls} ${expired?'expired':''}">
+        <td class="num-cell">${it.idx+1}</td>
+        <td>${thumb}${esc(it.n)}${tag}${expStr}</td>
+        <td class="art">${esc(it.a)||"—"}</td>
+        <td class="qty">${it.q} ${esc(it.u)}<div style="font-size:.65rem;color:var(--muted);font-weight:400">мин ${min}</div></td>
+        <td class="row-actions">${editBtn}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  });
+
+  let emptyMsg;
+  if(shown === 0){
+    if(state.stockFilter === "crit" && !q) emptyMsg = "🎉 Позиций с нулевым остатком нет.";
+    else if(state.stockFilter === "low" && !q) emptyMsg = "✅ Позиций на границе порога нет.";
+    else if(q) emptyMsg = `Ничего не найдено по запросу «${esc(state.query)}»`;
+    else emptyMsg = "Список пуст. Нажмите «➕ Добавить».";
+  }
+  document.getElementById("tableWrap").innerHTML = shown
+    ? html : `<div class="empty">${emptyMsg}</div>`;
+}
+function sortBy(key){
+  if(state.sortKey === key) state.sortDir *= -1;
+  else { state.sortKey = key; state.sortDir = 1; }
+  renderTable();
+}
+function sortIcon(k){
+  if(state.sortKey !== k) return "";
+  return state.sortDir === 1 ? "▲" : "▼";
+}
+
+/* ============================================================
+   МОДАЛКИ: ОТКРЫТИЕ/ЗАКРЫТИЕ
+   ============================================================ */
+function closeModal(id){ document.getElementById(id).classList.remove("show"); }
+
+/* ============================================================
+   ДОБАВЛЕНИЕ / РЕДАКТИРОВАНИЕ
+   ============================================================ */
+function openAdd(){
+  if(!canEdit()){ showToast("Нет прав на изменение", true); return; }
+  editingIndex = -1; tempPhoto = null;
+  document.getElementById("modalTitle").textContent = "➕ Добавить позицию";
+  document.getElementById("f-name").value = "";
+  document.getElementById("f-art").value = "";
+  document.getElementById("f-qty").value = 0;
+  document.getElementById("f-min").value = 3;
+  document.getElementById("f-unit").value = "шт.";
+  document.getElementById("f-exp").value = "";
+  document.getElementById("f-photo").value = "";
+  document.getElementById("photoPreview").innerHTML = "";
+  document.getElementById("modal").classList.add("show");
+  setTimeout(()=>document.getElementById("f-name").focus(), 50);
+}
+function openEdit(idx){
+  if(!canEdit()){ showToast("Нет прав на изменение", true); return; }
+  editingIndex = idx; tempPhoto = null;
+  const it = DATA[idx];
+  document.getElementById("modalTitle").textContent = "✏️ Редактировать позицию";
+  document.getElementById("f-name").value = it.n;
+  document.getElementById("f-art").value = it.a || "";
+  document.getElementById("f-qty").value = it.q;
+  document.getElementById("f-min").value = it.min || 3;
+  document.getElementById("f-unit").value = it.u;
+  document.getElementById("f-exp").value = it.exp || "";
+  document.getElementById("f-photo").value = "";
+  document.getElementById("photoPreview").innerHTML = it.photo
+    ? `<img src="${it.photo}" style="max-width:100px;margin-top:8px;border-radius:8px"><br><button onclick="tempPhoto='__remove__';this.parentElement.innerHTML='Фото будет удалено'">Удалить фото</button>`
+    : "";
+  document.getElementById("modal").classList.add("show");
+  setTimeout(()=>document.getElementById("f-name").focus(), 50);
+}
+function handlePhoto(e){
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = ev=>{
+    tempPhoto = ev.target.result;
+    document.getElementById("photoPreview").innerHTML = `<img src="${tempPhoto}" style="max-width:100px;margin-top:8px;border-radius:8px">`;
+  };
+  r.readAsDataURL(file);
+}
+function saveItem(){
+  const n = document.getElementById("f-name").value.trim();
+  const a = document.getElementById("f-art").value.trim();
+  const q = Number(document.getElementById("f-qty").value);
+  const m = Number(document.getElementById("f-min").value);
+  const u = document.getElementById("f-unit").value;
+  const exp = document.getElementById("f-exp").value;
+  if(!n){ showToast("Введите наименование", true); return; }
+  if(isNaN(q) || q < 0){ showToast("Количество ≥ 0", true); return; }
+
+  let photo;
+  if(tempPhoto === "__remove__") photo = "";
+  else if(tempPhoto) photo = tempPhoto;
+  else if(editingIndex >= 0) photo = DATA[editingIndex].photo || "";
+  else photo = "";
+
+  const item = {n, a, q, u, min:isNaN(m)?3:m, exp, photo};
+  if(editingIndex === -1){
+    DATA.push(item);
+    logAction(`➕ Добавлено: «${n}» ${q} ${u}`);
+    showToast("✅ Добавлено");
+  }else{
+    DATA[editingIndex] = item;
+    logAction(`✏️ Изменено: «${n}»`);
+    showToast("✅ Изменено");
+  }
+  saveWarehouses(); closeModal("modal"); renderAll();
+}
+function deleteItem(idx){
+  if(!canEdit()){ showToast("Нет прав", true); return; }
+  const it = DATA[idx];
+  if(!confirm(`Удалить позицию?\n\n«${it.n}» ${it.a ? '('+it.a+')' : ''}\nКол-во: ${it.q} ${it.u}`)) return;
+  DATA.splice(idx, 1);
+  logAction(`🗑️ Удалено: «${it.n}»`);
+  saveWarehouses(); renderAll(); showToast("Удалено");
+}
+
+/* ============================================================
+   ПРИХОД / РАСХОД
+   ============================================================ */
+function openMove(idx){
+  if(!canEdit()){ showToast("Нет прав", true); return; }
+  moveIndex = idx;
+  const it = DATA[idx];
+  document.getElementById("moveTitle").textContent = "➕➖ Движение товара";
+  document.getElementById("moveItemName").textContent = `«${it.n}» ${it.a?'('+it.a+')':''} — остаток: ${it.q} ${it.u}`;
+  document.getElementById("moveQty").value = 1;
+  document.getElementById("moveNote").value = "";
+  document.getElementById("moveType").value = "in";
+  document.getElementById("moveModal").classList.add("show");
+}
+function applyMove(){
+  const type = document.getElementById("moveType").value;
+  const qty = Number(document.getElementById("moveQty").value);
+  const note = document.getElementById("moveNote").value.trim();
+  if(isNaN(qty) || qty <= 0){ showToast("Количество > 0", true); return; }
+  const it = DATA[moveIndex];
+  if(type === "out" && qty > it.q){ showToast("Недостаточно остатка", true); return; }
+  it.q += type === "in" ? qty : -qty;
+  logAction(`${type==="in"?"➕ Приход":"➖ Расход"}: «${it.n}» ${type==="in"?"+":"-"}${qty} ${it.u}${note?" ("+note+")":""}`);
+  saveWarehouses(); closeModal("moveModal"); renderAll();
+  showToast(`${type==="in"?"Приход":"Расход"} применён`);
+}
+
+/* ============================================================
+   БЫСТРОЕ ПОПОЛНЕНИЕ
+   ============================================================ */
+function quickRestock(idx){
+  if(!canEdit()){ showToast("Нет прав", true); return; }
+  const it = DATA[idx];
+  const add = prompt(`Пополнить:\n«${it.n}»\nСейчас: ${it.q} ${it.u}\n\nНа сколько добавить?`, "10");
+  if(add === null) return;
+  const num = Number(add);
+  if(isNaN(num) || num <= 0){ showToast("Введите число > 0", true); return; }
+  it.q += num;
+  logAction(`➕ Пополнение: «${it.n}» +${num} ${it.u}`);
+  saveWarehouses(); renderAll();
+  showToast(`+${num} ${it.u}`);
+}
+
+/* ============================================================
+   QR
+   ============================================================ */
+function openQR(idx){
+  const it = DATA[idx];
+  const text = `${it.n} ${it.a?'('+it.a+')':''} — ${CURRENT}`;
+  const url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(text);
+  document.getElementById("qrBox").innerHTML = `
+    <img src="${url}" alt="QR">
+    <p><b>${esc(it.n)}</b><br>${esc(it.a)||"—"}</p>
+    <small style="color:var(--muted)">${esc(CURRENT)}</small>
+  `;
+  document.getElementById("qrModal").classList.add("show");
+}
+
+/* ============================================================
+   ПОИСК И ЗАПУСК
+   ============================================================ */
+document.getElementById("search").addEventListener("input", e=>{
+  state.query = e.target.value; renderTable();
+});
+document.querySelectorAll(".modal-overlay").forEach(o=>{
+  o.addEventListener("click", e=>{ if(e.target === o) o.classList.remove("show"); });
+});
+document.addEventListener("keydown", e=>{
+  if(e.key === "Escape") document.querySelectorAll(".modal-overlay.show").forEach(m=>m.classList.remove("show"));
+  if(e.key === "Enter" && document.getElementById("modal").classList.contains("show")) saveItem();
+});
+
+function renderAll(){
+  renderUserChip();
+  renderWarehouseSelect();
+  renderStats();
+  renderBanner();
+  renderAnchors();
+  renderTable();
+}
+/* ============================================================
+   ИСТОРИЯ ОПЕРАЦИЙ
+   ============================================================ */
+function openHistory(){
+  const h = getHistory();
+  const el = document.getElementById("histList");
+  if(!h.length){
+    el.innerHTML = `<div class="empty">История пуста. Все действия (добавление, изменение, приход/расход) будут здесь.</div>`;
+  }else{
+    el.innerHTML = h.map(x=>`
+      <div class="hist-item">
+        <span class="t">${fmtDate(x.t)}</span>
+        <span class="a">${esc(x.a)}</span>
+        <span style="color:var(--muted);font-size:.75rem">${esc(x.u||"")}</span>
+      </div>
+    `).join("");
+  }
+  document.getElementById("histModal").classList.add("show");
+}
+function clearHistory(){
+  if(!confirm("Очистить всю историю операций?")) return;
+  saveHistory([]);
+  openHistory();
+  showToast("История очищена");
+}
+
+/* ============================================================
+   ОТЧЁТЫ
+   ============================================================ */
+function openReports(){
+  const el = document.getElementById("reportBody");
+  const total = DATA.length;
+  const totalUnits = DATA.reduce((s,x)=>s+(+x.q||0),0);
+  const crit = DATA.filter(x=>x.q===0).length;
+  const low = DATA.filter(x=>x.q>0 && x.q<=(x.min||3)).length;
+  const okCount = DATA.filter(x=>x.q>(x.min||3)).length;
+  const expired = DATA.filter(x=>x.exp && new Date(x.exp)<new Date()).length;
+
+  // по категориям
+  const cats = {};
+  DATA.forEach(it=>{
+    const c = getCat(it.n);
+    (cats[c.id] ||= {name:c.name, count:0, units:0, low:0});
+    cats[c.id].count++;
+    cats[c.id].units += (+it.q||0);
+    if(it.q <= (it.min||3)) cats[c.id].low++;
+  });
+  const maxUnits = Math.max(...Object.values(cats).map(c=>c.units), 1);
+
+  // топ-10 по количеству
+  const top = [...DATA].sort((a,b)=>b.q-a.q).slice(0,10);
+  const maxTop = top[0]?.q || 1;
+
+  // история за 7 дней
+  const hist = getHistory();
+  const weekAgo = Date.now() - 7*24*3600*1000;
+  const weekOps = hist.filter(x=>new Date(x.t).getTime() >= weekAgo);
+  const inOps = weekOps.filter(x=>x.a.startsWith("➕")).length;
+  const outOps = weekOps.filter(x=>x.a.startsWith("➖")).length;
+
+  el.innerHTML = `
+    <div class="report-grid">
+      <div class="report-card">
+        <h4>Общая сводка</h4>
+        <div class="report-row"><span>Позиций</span><b>${total}</b></div>
+        <div class="report-row"><span>Единиц товара</span><b>${totalUnits.toLocaleString('ru')}</b></div>
+        <div class="report-row"><span>Достаточно</span><b style="color:var(--ok)">${okCount}</b></div>
+        <div class="report-row"><span>Мало</span><b style="color:var(--warn)">${low}</b></div>
+        <div class="report-row"><span>Нет в наличии</span><b style="color:var(--bad)">${crit}</b></div>
+        <div class="report-row"><span>Просрочено</span><b style="color:var(--bad)">${expired}</b></div>
+      </div>
+      <div class="report-card">
+        <h4>Активность за 7 дней</h4>
+        <div class="report-row"><span>Приходов</span><b>${inOps}</b></div>
+        <div class="report-row"><span>Расходов</span><b>${outOps}</b></div>
+        <div class="report-row"><span>Всего операций</span><b>${weekOps.length}</b></div>
+      </div>
+      <div class="report-card">
+        <h4>Склад</h4>
+        <div class="report-row"><span>Название</span><b>${esc(CURRENT)}</b></div>
+        <div class="report-row"><span>Категорий</span><b>${Object.keys(cats).length}</b></div>
+        <div class="report-row"><span>Дата отчёта</span><b>${new Date().toLocaleDateString('ru')}</b></div>
+      </div>
+    </div>
+
+    <h4 style="margin:16px 0 8px;color:var(--accent)">По категориям</h4>
+    <div style="background:var(--panel2);padding:14px;border-radius:10px">
+      ${Object.values(cats).map(c=>`
+        <div style="margin-bottom:10px">
+          <div class="report-row"><span>${c.name}</span><b>${c.count} поз. · ${c.units.toLocaleString('ru')} ед.${c.low?' · ⚠️ '+c.low+' мало':''}</b></div>
+          <div class="bar"><div style="width:${Math.round(c.units/maxUnits*100)}%"></div></div>
+        </div>
+      `).join("")}
+    </div>
+
+    <h4 style="margin:16px 0 8px;color:var(--accent)">Топ-10 по количеству</h4>
+    <div style="background:var(--panel2);padding:14px;border-radius:10px">
+      ${top.map((it,i)=>`
+        <div style="margin-bottom:8px">
+          <div class="report-row"><span>${i+1}. ${esc(it.n.slice(0,50))}${it.a?' ('+esc(it.a)+')':''}</span><b>${it.q} ${esc(it.u)}</b></div>
+          <div class="bar"><div style="width:${Math.round(it.q/maxTop*100)}%"></div></div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+  document.getElementById("reportModal").classList.add("show");
+}
+
+/* ============================================================
+   ПОРА ЗАКАЗАТЬ
+   ============================================================ */
+function openReorderList(){
+  const list = DATA.map((it,i)=>({...it, idx:i})).filter(it=>it.q < (it.min||3));
+  const el = document.getElementById("reorderBody");
+  if(!list.length){
+    el.innerHTML = `<div class="empty">🎉 Отлично! Все позиции имеют запас выше минимального.</div>`;
+  }else{
+    el.innerHTML = `
+      <p style="color:var(--muted);font-size:.85rem">Найдено позиций: <b>${list.length}</b>. Ниже мин. запаса.</p>
+      <table><thead><tr>
+        <th>Наименование</th><th>Артикул</th>
+        <th style="text-align:right">Остаток</th>
+        <th style="text-align:right">Мин.</th>
+        <th style="text-align:right">Заказать</th>
+      </tr></thead><tbody>
+      ${list.map(it=>{
+        const need = (it.min||3) - it.q;
+        return `<tr class="${it.q===0?'crit':'low'}">
+          <td>${esc(it.n)}</td>
+          <td class="art">${esc(it.a)||"—"}</td>
+          <td class="qty">${it.q} ${esc(it.u)}</td>
+          <td class="qty" style="color:var(--muted)">${it.min||3}</td>
+          <td class="qty" style="color:var(--warn)">+${need}</td>
+        </tr>`;
+      }).join("")}
+      </tbody></table>
+    `;
+  }
+  document.getElementById("reorderModal").classList.add("show");
+}
+
+/* ============================================================
+   ПЕЧАТЬ: СПИСОК НА ЗАКУПКУ
+   ============================================================ */
+function printPurchaseList(){
+  const list = DATA.filter(it=>it.q < (it.min||3));
+  if(!list.length){ showToast("Нет позиций для закупки", true); return; }
+  let html = `
+    <div style="text-align:center;margin-bottom:20px">
+      <h2 style="margin:0">Список на закупку</h2>
+      <p style="margin:4px 0">Склад: <b>${esc(CURRENT)}</b> · ${new Date().toLocaleDateString('ru')}</p>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:#eee">
+        <th style="border:1px solid #999;padding:6px">№</th>
+        <th style="border:1px solid #999;padding:6px">Наименование</th>
+        <th style="border:1px solid #999;padding:6px">Артикул</th>
+        <th style="border:1px solid #999;padding:6px">Остаток</th>
+        <th style="border:1px solid #999;padding:6px">Мин.</th>
+        <th style="border:1px solid #999;padding:6px">Заказать</th>
+        <th style="border:1px solid #999;padding:6px">Отметка</th>
+      </tr></thead><tbody>
+  `;
+  list.forEach((it,i)=>{
+    const need = (it.min||3) - it.q;
+    html += `<tr>
+      <td style="border:1px solid #999;padding:6px;text-align:center">${i+1}</td>
+      <td style="border:1px solid #999;padding:6px">${esc(it.n)}</td>
+      <td style="border:1px solid #999;padding:6px">${esc(it.a)||"—"}</td>
+      <td style="border:1px solid #999;padding:6px;text-align:right">${it.q} ${esc(it.u)}</td>
+      <td style="border:1px solid #999;padding:6px;text-align:right">${it.min||3}</td>
+      <td style="border:1px solid #999;padding:6px;text-align:right;font-weight:bold">+${need} ${esc(it.u)}</td>
+      <td style="border:1px solid #999;padding:6px"><span class="blank">&nbsp;</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table>
+    <p style="margin-top:20px;font-size:.85rem">Ответственный: ____________________ / ____________________</p>
+    <p style="font-size:.85rem">Дата: ____________</p>
+  `;
+  printHTML(html);
+}
+
+function printReorderList(){
+  const list = DATA.filter(it=>it.q < (it.min||3));
+  if(!list.length){ showToast("Нет позиций", true); return; }
+  let html = `<h2 style="text-align:center">Список на закупку — ${esc(CURRENT)}</h2>
+    <p style="text-align:center;font-size:.9rem">${new Date().toLocaleDateString('ru')}</p>
+    <table style="width:100%;border-collapse:collapse"><thead><tr style="background:#eee">
+      <th style="border:1px solid #999;padding:6px">№</th>
+      <th style="border:1px solid #999;padding:6px">Наименование</th>
+      <th style="border:1px solid #999;padding:6px">Артикул</th>
+      <th style="border:1px solid #999;padding:6px">Остаток</th>
+      <th style="border:1px solid #999;padding:6px">Заказать</th>
+      <th style="border:1px solid #999;padding:6px">Отметка</th>
+    </tr></thead><tbody>`;
+  list.forEach((it,i)=>{
+    const need = (it.min||3) - it.q;
+    html += `<tr>
+      <td style="border:1px solid #999;padding:6px;text-align:center">${i+1}</td>
+      <td style="border:1px solid #999;padding:6px">${esc(it.n)}</td>
+      <td style="border:1px solid #999;padding:6px">${esc(it.a)||"—"}</td>
+      <td style="border:1px solid #999;padding:6px;text-align:right">${it.q} ${esc(it.u)}</td>
+      <td style="border:1px solid #999;padding:6px;text-align:right;font-weight:bold">+${need} ${esc(it.u)}</td>
+      <td style="border:1px solid #999;padding:6px"><span class="blank">&nbsp;</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table><p style="margin-top:20px;font-size:.85rem">Ответственный: ____________________</p>`;
+  printHTML(html);
+}
+
+function printHTML(inner){
+  const pa = document.getElementById("printArea");
+  pa.innerHTML = inner;
+  pa.classList.add("show");
+  window.print();
+  setTimeout(()=>{ pa.classList.remove("show"); pa.innerHTML = ""; }, 500);
+}
+
+/* ============================================================
+   ПЕЧАТЬ ЭТИКЕТОК
+   ============================================================ */
+function printLabels(){
+  const shown = DATA.map((it,i)=>({...it, idx:i})).filter(it=>{
+    if(!matchesStockFilter(it)) return false;
+    if(state.cat !== "all" && getCat(it.n).id !== state.cat) return false;
+    if(state.query){
+      const q = state.query.toLowerCase();
+      if(!(it.n+" "+(it.a||"")).toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  if(!shown.length){ showToast("Нет позиций для этикеток", true); return; }
+  if(!confirm(`Напечатать этикетки для ${shown.length} позиций?`)) return;
+
+  let html = `<h2 style="text-align:center">Этикетки — ${esc(CURRENT)}</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px">`;
+  shown.forEach(it=>{
+    const text = `${it.n} ${it.a?'('+it.a+')':''}`;
+    const url = "https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=" + encodeURIComponent(text);
+    html += `<div style="border:1px solid #999;padding:8px;text-align:center;font-size:11px">
+      <img src="${url}" style="width:100px;height:100px">
+      <div style="font-weight:bold;margin-top:4px">${esc(it.n)}</div>
+      <div style="color:#555">${esc(it.a)||"—"}</div>
+      <div style="color:#555">${it.q} ${esc(it.u)}</div>
+    </div>`;
+  });
+  html += `</div>`;
+  printHTML(html);
+}
+
+/* ============================================================
+   ЭКСПОРТ / ИМПОРТ
+   ============================================================ */
+function exportCSV(){
+  const rows = [["№","Наименование","Артикул","Кол-во","Ед.","Мин.","Срок","Категория","Статус"]];
+  DATA.forEach((it,i)=>{
+    const c = getCat(it.n);
+    const status = it.q===0 ? "Нет" : it.q<=(it.min||3) ? "Мало" : "OK";
+    rows.push([i+1, it.n, it.a||"", it.q, it.u, it.min||3, it.exp||"",
+      c.name.replace(/[^\wа-яёА-ЯЁ\s]/gi,"").trim(), status]);
+  });
+  const csv = "\uFEFF" + rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(";")).join("\r\n");
+  downloadFile(csv, `Склад_${CURRENT}_${new Date().toISOString().slice(0,10)}.csv`, "text/csv;charset=utf-8;");
+  showToast("📥 CSV экспортирован");
+}
+
+function exportJSON(){
+  const json = JSON.stringify({
+    version:4,
+    date:new Date().toISOString(),
+    current:CURRENT,
+    warehouses:WAREHOUSES
+  }, null, 2);
+  downloadFile(json, `sklad_backup_${new Date().toISOString().slice(0,10)}.json`, "application/json");
+  showToast("💾 Резервная копия сохранена");
+}
+
+function importFile(e){
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  const isCSV = /\.csv$/i.test(file.name);
+  reader.onload = ev=>{
+    const text = ev.target.result;
+    if(isCSV){
+      importCSV(text);
+    }else{
+      importJSON(text);
+    }
+    e.target.value = "";
+  };
+  reader.readAsText(file, "UTF-8");
+}
+
+function importJSON(text){
+  try{
+    const parsed = JSON.parse(text);
+    if(parsed.warehouses){
+      if(!confirm("Загрузить резервную копию?\nТекущие данные будут заменены.")) return;
+      WAREHOUSES = parsed.warehouses;
+      CURRENT = parsed.current || Object.keys(WAREHOUSES)[0];
+      setCurrentWarehouseName(CURRENT);
+      DATA = WAREHOUSES[CURRENT];
+      saveWarehouses();
+      renderAll();
+      showToast(`📂 Загружено: ${Object.keys(WAREHOUSES).length} склад(ов)`);
+      return;
+    }
+    const arr = Array.isArray(parsed) ? parsed : parsed.data;
+    if(!Array.isArray(arr)) throw new Error("Неверный формат JSON");
+    if(!confirm(`Загрузить ${arr.length} позиций в склад «${CURRENT}»?\nТекущие данные будут заменены.`)) return;
+    DATA = arr.map(x=>({...x, min:x.min??3}));
+    WAREHOUSES[CURRENT] = DATA;
+    saveWarehouses(); renderAll();
+    showToast(`📂 Загружено ${arr.length} позиций`);
+  }catch(err){ showToast("⚠️ " + err.message, true); }
+}
+
+function importCSV(text){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length < 2){ showToast("CSV пустой", true); return; }
+  const sep = lines[0].includes(";") ? ";" : ",";
+  const parseLine = line => {
+    const out = []; let cur = ""; let inQ = false;
+    for(let i=0;i<line.length;i++){
+      const ch = line[i];
+      if(ch === '"'){
+        if(inQ && line[i+1] === '"'){ cur += '"'; i++; }
+        else inQ = !inQ;
+      }else if(ch === sep && !inQ){ out.push(cur); cur = ""; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out;
+  };
+  const header = parseLine(lines[0]).map(h=>h.toLowerCase());
+  const idxName = header.findIndex(h=>/наимен|name/.test(h));
+  const idxArt  = header.findIndex(h=>/артик|art/.test(h));
+  const idxQty  = header.findIndex(h=>/кол|qty|количест/.test(h));
+  const idxUnit = header.findIndex(h=>/ед|unit/.test(h));
+  if(idxName < 0 || idxQty < 0){ showToast("CSV: не найдены колонки «Наименование» и «Количество»", true); return; }
+
+  const items = [];
+  for(let i=1;i<lines.length;i++){
+    const cols = parseLine(lines[i]);
+    const name = (cols[idxName]||"").trim();
+    const qty = Number((cols[idxQty]||"0").replace(",", "."));
+    if(!name) continue;
+    items.push({
+      n: name,
+      a: idxArt>=0 ? (cols[idxArt]||"").trim() : "",
+      q: isNaN(qty) ? 0 : qty,
+      u: idxUnit>=0 ? (cols[idxUnit]||"шт.").trim() : "шт.",
+      min: 3
+    });
+  }
+  if(!items.length){ showToast("Не удалось прочитать позиции", true); return; }
+  if(!confirm(`Импортировать ${items.length} позиций из CSV?\nТекущие данные будут заменены.`)) return;
+  DATA = items;
+  WAREHOUSES[CURRENT] = DATA;
+  saveWarehouses(); renderAll();
+  showToast(`📂 Импортировано ${items.length} позиций`);
+}
+
+/* ============================================================
+   СБРОС
+   ============================================================ */
+function resetData(){
+  if(!confirm(`Сбросить склад «${CURRENT}» к исходным данным?\nВсе изменения будут потеряны.`)) return;
+  WAREHOUSES[CURRENT] = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  DATA = WAREHOUSES[CURRENT];
+  saveWarehouses(); renderAll();
+  showToast("♻️ Сброшено");
+}
+
+/* ============================================================
+   ЗАПУСК
+   ============================================================ */
+renderAll();
+</script>
+</body>
+</html>
